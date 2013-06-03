@@ -20,12 +20,8 @@ class DASDownloader
 
   def run
     screencast_urls.each do |screencast_url|
-      download_screencast(screencast_url)
+      Downloader.new(screencast_url, destination_path).save_file
     end
-  end
-
-  def download_screencast(screencast_url)
-    Downloader.new(screencast_url, destination_path).save_file
   end
 
   private
