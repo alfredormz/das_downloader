@@ -3,27 +3,60 @@ require 'mechanize'
 #usage das_dowloader.rb [destination_path]
 
 
-URL = "https://www.dropbox.com/sh/cy20e9npok91qc4/FxNKaTDdqE/das?lst"
 path  = ARGV[0] || "."
-agent = Mechanize.new
-agent.pluggable_parser.default = Mechanize::Download
 
-agent.get URL
-links = agent.page.search("a.filename-link").map { |l| l['href'] }
+class DASDownloader
 
-links.each do |url|
+  URL = "https://www.dropbox.com/sh/cy20e9npok91qc4/FxNKaTDdqE/das?lst"
+  attr_reader   :screencast_urls
+  attr_accessor :destination_path
 
-  agent.get(url)
-  download_button_link = agent.page.search("#download_button_link").first["href"]
-  screencast_filename  = "#{url.split("/").last}"
-  target_filename      = "#{path}/#{screencast_filename}"
+  def initialize(destination_path=nil)
+    @agent = Mechanize.new
+    @destination_path = destination_path || "."
+    @screencast_urls = fetch_urls
+  end
 
-  unless File.exists? target_filename
-    puts "Downloading #{screencast_filename}"
-    agent.get(download_button_link).save target_filename
-  else
-    puts "#{screencast_filename} already downloaded"
+  def run
+    screencast_urls.each do |screencast_url|
+      download_screencast(screencast_url)
+    end
+  end
+
+  def download_screencast(screencast_url)
+    unless already_downloaded? screencast_url
+      fetch_and_save_file(screencast_url)
+     else
+      puts "#{screencast_filename(screencast_url)} already downloaded"
+    end
+  end
+
+  private
+
+  def fetch_urls
+   @agent.get URL
+   @agent.page.search("a.filename-link").map { |l| l['href'] }
+  end
+
+  def fetch_and_save_file(screencast_url)
+    @agent.get(screencast_url)
+    puts "Downloading #{screencast_filename(screencast_url)}"
+    download_button_link = @agent.page.search("#download_button_link").first["href"]
+    @agent.get(download_button_link).save target_filename
+  end
+
+  def screencast_filename(screencast_url)
+    "#{screencast_url.split("/").last}"
+  end
+
+  def target_filename(screencast_url)
+    "#{destination_path}/#{screencast_filename(screencast_url)}"
+  end
+
+  def already_downloaded?(screencast_url)
+    File.exists? target_filename(screencast_url)
   end
 end
 
 
+DASDownloader.new(path).run
